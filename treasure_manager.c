@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fcntl.h> //pt open() etc
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -20,7 +20,7 @@ typedef struct{
 void logAction(const char* huntID, const char* message)
 {
     char logPath[256];
-    snprintf(logPath, sizeof(logPath), "log_%s.txt", huntID); //creaza un path de tipul log_<id>.txt
+    snprintf(logPath, sizeof(logPath), "log_%s.txt", huntID);
     int f=open(logPath, O_WRONLY | O_CREAT | O_APPEND, 0644);
     if (f<0) exit(-1);
     dprintf(f, "%s\n", message);
@@ -36,13 +36,13 @@ void HuntDir(const char* huntID)
 {
     char dirPath[256];
     mkdir("hunt", 0755);
-    snprintf(dirPath, sizeof(dirPath), "hunt/%s", huntID); //creaza un path de tipul hunt_<id>
+    snprintf(dirPath, sizeof(dirPath), "hunt/%s", huntID);
     mkdir(dirPath,0755);
 }
 
 char* treasurePath(const char* huntID)
 {
-    static char path[256]; //static ca sa nu se piarda in afara functiei
+    static char path[256];
     snprintf(path, sizeof(path), "treasure_%s.txt", huntID);
     return path;
 }
@@ -50,7 +50,7 @@ char* treasurePath(const char* huntID)
 void addTreasure(const char* huntID)
 {
     HuntDir(huntID);
-    int f=open(treasurePath(huntID), O_WRONLY | O_CREAT | O_APPEND, 0644); //0644 permisiune: owner citeste si scrie, restul doar citesc
+    int f=open(treasurePath(huntID), O_WRONLY | O_CREAT | O_APPEND, 0644);
     if(f<0)
     {
         perror("Error opening file");
@@ -61,12 +61,10 @@ void addTreasure(const char* huntID)
     printf("Enter username: "); scanf("%s", t.username);
     printf("Enter latitude: "); scanf("%f", &t.col);
     printf("Enter longitude: "); scanf("%f", &t.linie);
-    printf("Enter clue: "); getchar(); fgets(t.clue, 100, stdin); //getchar() te scopa de \n de dinainte ca sa mearga fgets() corect, altfel ti-ar returna sir gol
-    //fgets() citeste linia si o pune in t.clue, dar nu stie sa stearga \n-ul de la sfarsit, deci trebuie sa-l stergi manual
-    t.clue[strcspn(t.clue, "\n")] = 0; // remove newline
+    printf("Enter clue: "); getchar(); fgets(t.clue, 100, stdin);
+    t.clue[strcspn(t.clue, "\n")] = 0;
     printf("Enter value: "); scanf("%d", &t.value);
 
-    //scrie in fisier
     write(f,&t,sizeof(Treasure));
     close(f);
     logAction(huntID,"Added treasure\n"); 
@@ -82,7 +80,7 @@ void listTreasures(const char* huntID)
 
     }
     struct stat st;
-    stat(treasurePath(huntID), &st); //obtine informatii despre fisierul specificat
+    stat(treasurePath(huntID), &st);
     printf("Hunt: %s\n", huntID);
     printf("File size: %ld\n", st.st_size);
     printf("Last modified: %s\n", ctime(&st.st_mtime));
@@ -134,11 +132,11 @@ void viewTreasure(const char *huntID, int ID)
 }
 
 void removeTreasure(const char* huntID, int ID)
-{ //copiezi tot in fisierul temporar inafara de ce vrei sa stergi si apoi stergi fisierul vechi si redenumesti temporarul
+{
     char path[256];
     char auxpath[256];
     snprintf(path, sizeof(path), "treasure_%s.txt", huntID);
-    snprintf(auxpath, sizeof(auxpath), "aux_%s.txt", huntID); //creaza un path de tipul treasure_<id>.tmp
+    snprintf(auxpath, sizeof(auxpath), "aux_%s.txt", huntID);
     int f=open(path, O_RDONLY);
     int auxf=open(auxpath, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if(f<0 || auxf<0)
@@ -154,7 +152,7 @@ void removeTreasure(const char* huntID, int ID)
         {
             ok=1; continue;
         }
-        write(auxf,&t,sizeof(Treasure)); //scrie in fisierul temporar
+        write(auxf,&t,sizeof(Treasure));
     }
     close(f);
     close(auxf);
@@ -209,7 +207,7 @@ void removeHunt(const char* huntID)
     unlink(treasure);
     unlink(logFile);
     unlink(symlink);
-    logAction(huntID, "Removed hunt\n"); //logheaza actiunea de stergere a comorilor
+    logAction(huntID, "Removed hunt\n");
 }
 int main(int argc, char* argv[])
 {
