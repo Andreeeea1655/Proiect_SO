@@ -150,6 +150,7 @@ int main()
             write(1,"Invalid command\n", strlen("Invalid command\n"));
         }
         //:))
+        //cum il pun in main :,(
     }
     return 0;
 }
