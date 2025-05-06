@@ -70,6 +70,49 @@ void addTreasure(const char* huntID)
     logAction(huntID,"Added treasure\n"); 
 }
 
+void listHunts()
+{
+    DIR *dir=opendir("hunt");
+    if(!dir)
+    {
+        perror("Error opening directory");
+        exit(-1);
+    }
+    struct dirent *entry;
+    while(entry=readdir(dir))
+    {
+        if((strcmp(entry->d_name, ".")==0) || strcmp(entry->d_name, ".")==0)
+            continue;
+        char path[256];
+        int len1=snprintf(path, sizeof(path), "hunt/%s", entry->d_name);
+        if(len1<0 || len1>sizeof(path))
+            continue;
+        int f=open(path, O_RDONLY);
+        if(f<0)
+        {
+            perror("Error opening file");
+            exit(-1);
+        }
+        else if(f==-1) 
+          continue;
+        
+        Treasure t;
+        int ct=0;
+        while(read(f,&t, sizeof(Treasure))>0)
+        {
+            ct++;
+        }
+        close(f);
+
+        char logPath[256];
+        int len2=snprintf(logPath, sizeof(logPath), "%s, %d treasures\n", entry->d_name, ct);
+        if(len2>0 && len2<sizeof(logPath))
+        {
+            write(1,logPath, strlen(logPath));
+        }
+    }
+    closedir(dir);
+}
 void listTreasures(const char* huntID)
 {
     int f=open(treasurePath(huntID), O_RDONLY);
