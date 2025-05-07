@@ -265,11 +265,15 @@ int main(int argc, char* argv[])
     {
         addTreasure(hundID);
     }
-    else if(strcmp(operation, "--list")==0)
+    else if(strcmp(operation, "--list_treasures")==0)
     {
         listTreasures(hundID);
     }
-    else if(strcmp(operation, "--view")==0 && argc==4)
+    else if(strcmp(operation,"--list_hunts")==0 && argc==2)
+    {
+        listHunts();
+    }
+    else if(strcmp(operation, "--view_treasures")==0 && argc==4)
     {
         viewTreasure(hundID, atoi(argv[3]));
     }
