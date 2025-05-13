@@ -20,7 +20,7 @@ typedef struct{
 void logAction(const char* huntID, const char* message)
 {
     char logPath[256];
-    snprintf(logPath, sizeof(logPath), "log_%s.txt", huntID);
+    snprintf(logPath, sizeof(logPath), "log_%s.bin", huntID);
     int f=open(logPath, O_WRONLY | O_CREAT | O_APPEND, 0644);
     if (f<0) exit(-1);
     dprintf(f, "%s\n", message);
@@ -43,7 +43,7 @@ void HuntDir(const char* huntID)
 char* treasurePath(const char* huntID)
 {
     static char path[256];
-    snprintf(path, sizeof(path), "treasure_%s.txt", huntID);
+    snprintf(path, sizeof(path), "hunt/%s/treasure.bin", huntID);
     return path;
 }
 
@@ -81,10 +81,10 @@ void listHunts()
     struct dirent *entry;
     while(entry=readdir(dir))
     {
-        if((strcmp(entry->d_name, ".")==0) || strcmp(entry->d_name, ".")==0)
+        if((strcmp(entry->d_name, "..")==0) || strcmp(entry->d_name, ".")==0)
             continue;
         char path[256];
-        int len1=snprintf(path, sizeof(path), "hunt/%s", entry->d_name);
+        int len1=snprintf(path, sizeof(path), "hunt/%s/treasure.bin", entry->d_name);
         if(len1<0 || len1>sizeof(path))
             continue;
         int f=open(path, O_RDONLY);
@@ -178,8 +178,8 @@ void removeTreasure(const char* huntID, int ID)
 {
     char path[256];
     char auxpath[256];
-    snprintf(path, sizeof(path), "treasure_%s.txt", huntID);
-    snprintf(auxpath, sizeof(auxpath), "aux_%s.txt", huntID);
+    snprintf(path, sizeof(path), "treasure_%s.bin", huntID);
+    snprintf(auxpath, sizeof(auxpath), "aux_%s.bin", huntID);
     int f=open(path, O_RDONLY);
     int auxf=open(auxpath, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if(f<0 || auxf<0)
@@ -244,8 +244,8 @@ void removeHunt(const char* huntID)
     char treasure[256];
     char logFile[256];
     char symlink[256];
-    snprintf(treasure, sizeof(treasure), "treasure_%s.txt", huntID);
-    snprintf(logFile, sizeof(logFile), "log_%s.txt", huntID);
+    snprintf(treasure, sizeof(treasure), "treasure_%s.bin", huntID);
+    snprintf(logFile, sizeof(logFile), "log_%s.bin", huntID);
     snprintf(symlink, sizeof(symlink), "logged_hunt-%s", huntID);
     unlink(treasure);
     unlink(logFile);
@@ -254,7 +254,7 @@ void removeHunt(const char* huntID)
 }
 int main(int argc, char* argv[])
 {
-    if(argc<3)
+    if(argc<2)
     {
         perror("Not enough arguments\n");
         exit(-1);
