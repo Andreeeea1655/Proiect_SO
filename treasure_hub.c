@@ -9,6 +9,7 @@
 
 pid_t pid_monitor=0;
 int monitor_running=0;
+int pipe_monitor[2]; //0-citire, 1- scriere
 
 void list_hunts_handler()
 {
@@ -22,6 +23,7 @@ void list_hunts_handler()
     {
         //child 
         execl("./treasure_manager", "./treasure_manager", "--list_hunts", NULL);
+        //execl replaces procesul curent cu unul nou
         perror("exec failed\n");
         exit(-1);
     }
@@ -82,13 +84,14 @@ void view_treasure_handler(const char* huntID, const char* treasureID)
 }
 void SIGTERM_handler()
 {
-    write(1, "SIGTERM signal received\n", strlen("SIGTERM signal received\n"));
+
+    write(STDOUT_FILENO, "SIGTERM signal received\n", strlen("SIGTERM signal received\n"));
     exit(0);
 }
 
 void SIGUSR1_handler()
 {
-    write(1, "SIGUSR1 signal received\n", strlen("SIGUSR1 signal received\n"));
+    write(STDOUT_FILENO, "SIGUSR1 signal received\n", strlen("SIGUSR1 signal received\n"));
     int f=open("cmd.txt", O_RDONLY);
     if(f<0)
     {
@@ -97,9 +100,8 @@ void SIGUSR1_handler()
     }
     char buffer[256];
     int i=0;
-    int bt=read(f, buffer, sizeof(buffer)-1);
+    int bt=read(f, buffer, sizeof(buffer));
     close(f);
-    buffer[bt]='\0';
     char* line[3]={NULL, NULL, NULL};
     char* p=strtok(buffer,"\n");
     while(p && i<3)
@@ -107,15 +109,13 @@ void SIGUSR1_handler()
         line[i++]=p;
         p=strtok(NULL,"\n");
     }
-    
-    printf("%s", line[0]);
     if(line[0] && strcmp(line[0], "list_hunts")==0)
     {
         list_hunts_handler();
     }
     else if(line[0] && line[1] && strcmp(line[0], "list_treasures")==0)
     {
-        list_treasures_handler(line[1]);
+       list_treasures_handler(line[1]);
     }
     else if(line[0] && line[1] && line[2] && strcmp(line[0], "view_treasure")==0)
     {
@@ -125,7 +125,7 @@ void SIGUSR1_handler()
 
 void SIGUSR2_handler()
 {
-    write(1, "SIGUSR2 signal received\n", strlen("SIGUSR2 signal received\n"));
+    write(pipe_monitor[1], "SIGUSR2 signal received\n", strlen("SIGUSR2 signal received\n"));
 }
 
 void run_monitor()
@@ -178,6 +178,11 @@ void start_monitor()
         write(1,"Monitor already running\n", strlen("Monitor already running\n")); //1-stdout , 0-stdin
         return;
     }
+    if(pipe(pipe_monitor)<0)
+    {
+        perror("Pipe failed\n");
+        exit(-1);
+    }
     pid_monitor=fork();
     if(pid_monitor<0)
     {
@@ -186,13 +191,18 @@ void start_monitor()
     }
     if(pid_monitor==0)
     {
+        //child
+        close(pipe_monitor[0]);
+        close(pipe_monitor[1]);
         run_monitor();
-        while(1);
+        pause();
+        exit(0);
     }
     else
     {
+        //parent
         monitor_running=1;
-        write(1,"Start monitor\n", strlen("Start monitor\n"));
+        close(pipe_monitor[1]);
     }
 }
 
@@ -246,6 +256,7 @@ void exit_monitor()
         exit(0);
     }
 }
+
 int main()
 {
     char command[50];
@@ -255,7 +266,7 @@ int main()
         command[len-1]='\0';
         if(strcmp(command, "start monitor")==0)
         {
-           start_monitor();
+            start_monitor();
         }
         else if(strcmp(command, "stop monitor")==0)
         {
@@ -271,40 +282,14 @@ int main()
         }
         else if(strncmp(command, "list treasures",14)==0)
         {
-            if(!monitor_running)
-            {
-                write(1,"Monitor is not running\n", strlen("Monitor is not running\n"));
-                continue;
-            }
-            char* huntID=command+14;
-            while(*huntID==' ')
-                huntID++;
-            if(*huntID=='\0')
-            {
-                write(1,"Missing huntID\n", strlen("Missing huntID\n"));
-            }
-            else{
-                command_monitor("list_treasures", huntID, NULL);
-            }
+            char* huntID=command+15;
+            command_monitor("list_treasures", huntID,NULL);
         }
         else if(strncmp(command, "view treasure",13)==0)
         {
-            if(!monitor_running)
-            {
-                write(1,"Monitor is not running\n", strlen("Monitor is not running\n"));
-                continue;
-            }
-            char* p=command+13;
-            while(*p==' ')
-                p++;
-            char *huntID=strtok(p," ");
+            char *ln=command+14;
+            char* huntID=strtok(ln," ");
             char* treasureID=strtok(NULL," ");
-            printf("%s %s\n", huntID, treasureID);
-            if(!treasureID || !huntID)
-            {
-                write(1,"Missing treasureID or huntID\n", strlen("Missing treasureID or huntID\n"));
-                continue;
-            }
             command_monitor("view_treasure", huntID, treasureID);
         }
         
@@ -313,5 +298,5 @@ int main()
             write(1,"Invalid command\n", strlen("Invalid command\n"));
         }
     }
-    return 0;
+    return 0;
 }
