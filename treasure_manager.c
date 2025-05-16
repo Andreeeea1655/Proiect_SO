@@ -20,16 +20,23 @@ typedef struct{
 void logAction(const char* huntID, const char* message)
 {
     char logPath[256];
-    snprintf(logPath, sizeof(logPath), "log_%s.bin", huntID);
+    snprintf(logPath, sizeof(logPath), "hunt/%s/logged_hunt", huntID);
     int f=open(logPath, O_WRONLY | O_CREAT | O_APPEND, 0644);
-    if (f<0) exit(-1);
+    if (f<0)
+    {
+        perror("Error opening file");
+        exit(-1);
+    }
     dprintf(f, "%s\n", message);
     close(f);
 
     //creeaza legatursa simbolica
     char err[256];
     snprintf(err, sizeof(err), "logged_hunt-%s", huntID);
-    symlink(logPath, err);
+    if(access(err, F_OK)<0)
+    {
+        symlink(logPath, err);
+    }
 }
 
 void HuntDir(const char* huntID)
@@ -43,7 +50,7 @@ void HuntDir(const char* huntID)
 char* treasurePath(const char* huntID)
 {
     static char path[256];
-    snprintf(path, sizeof(path), "hunt/%s/treasure.bin", huntID);
+    snprintf(path, sizeof(path), "hunt/%s/treasure_%s.bin", huntID, huntID);
     return path;
 }
 
@@ -58,6 +65,21 @@ void addTreasure(const char* huntID)
     }
     Treasure t;
     printf("Enter treasure ID: "); scanf("%d", &t.ID);
+    int f1=open(treasurePath(huntID), O_RDONLY);
+    if(f1>=0)
+    {
+        Treasure existsID;
+        while(read(f1,&existsID,sizeof(Treasure))>0)
+        {
+            if(existsID.ID==t.ID)
+            {
+                printf("Treasure with ID %d already exists.\n", t.ID);
+                close(f1);
+                exit(-1);
+            }
+        }
+        close(f1);
+    }
     printf("Enter username: "); scanf("%s", t.username);
     printf("Enter latitude: "); scanf("%f", &t.col);
     printf("Enter longitude: "); scanf("%f", &t.linie);
@@ -79,12 +101,12 @@ void listHunts()
         exit(-1);
     }
     struct dirent *entry;
-    while(entry=readdir(dir))
+    while((entry=readdir(dir))!=NULL)
     {
         if((strcmp(entry->d_name, "..")==0) || strcmp(entry->d_name, ".")==0)
             continue;
         char path[256];
-        int len1=snprintf(path, sizeof(path), "hunt/%s/treasure.bin", entry->d_name);
+        int len1=snprintf(path, sizeof(path), "hunt/%s/treasure_%s.bin", entry->d_name, entry->d_name);
         if(len1<0 || len1>sizeof(path))
             continue;
         int f=open(path, O_RDONLY);
@@ -93,9 +115,6 @@ void listHunts()
             perror("Error opening file");
             exit(-1);
         }
-        else if(f==-1) 
-          continue;
-        
         Treasure t;
         int ct=0;
         while(read(f,&t, sizeof(Treasure))>0)
@@ -152,6 +171,7 @@ void viewTreasure(const char *huntID, int ID)
         exit(-1);
 
     }
+    lseek(f,0,SEEK_SET);
     Treasure t;
     int ok=0;
     while(read(f,&t,sizeof(Treasure))>0)
@@ -167,19 +187,19 @@ void viewTreasure(const char *huntID, int ID)
             ok=1; break;
         }
     }
-    close(f);
     if(!ok)
         printf("Treasure with ID %d not found\n", ID);
     else
         logAction(huntID, "Viewed treasure\n");
+    close(f);
 }
 
 void removeTreasure(const char* huntID, int ID)
 {
     char path[256];
     char auxpath[256];
-    snprintf(path, sizeof(path), "treasure_%s.bin", huntID);
-    snprintf(auxpath, sizeof(auxpath), "aux_%s.bin", huntID);
+    snprintf(path, sizeof(path), "hunt/%s/treasure_%s.bin", huntID, huntID);
+    snprintf(auxpath, sizeof(auxpath), "hunt/%s/aux_%s.bin", huntID, huntID);
     int f=open(path, O_RDONLY);
     int auxf=open(auxpath, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if(f<0 || auxf<0)
@@ -244,8 +264,8 @@ void removeHunt(const char* huntID)
     char treasure[256];
     char logFile[256];
     char symlink[256];
-    snprintf(treasure, sizeof(treasure), "treasure_%s.bin", huntID);
-    snprintf(logFile, sizeof(logFile), "log_%s.bin", huntID);
+    snprintf(treasure, sizeof(treasure), "treasure_%s.txt", huntID);
+    snprintf(logFile, sizeof(logFile), "hunt/%s/logged_hunt", huntID);
     snprintf(symlink, sizeof(symlink), "logged_hunt-%s", huntID);
     unlink(treasure);
     unlink(logFile);
@@ -260,14 +280,14 @@ int main(int argc, char* argv[])
         exit(-1);
     }
     const char* operation=argv[1];
-    const char* hundID=argv[2];
+    const char* huntID=argv[2];
     if(strcmp(operation, "--add")==0)
     {
-        addTreasure(hundID);
+        addTreasure(huntID);
     }
     else if(strcmp(operation, "--list_treasures")==0)
     {
-        listTreasures(hundID);
+        listTreasures(huntID);
     }
     else if(strcmp(operation,"--list_hunts")==0 && argc==2)
     {
@@ -275,20 +295,20 @@ int main(int argc, char* argv[])
     }
     else if(strcmp(operation, "--view_treasures")==0 && argc==4)
     {
-        viewTreasure(hundID, atoi(argv[3]));
+        viewTreasure(huntID, atoi(argv[3]));
     }
     else if(strcmp(operation, "--remove_treasure")==0 && argc==4)
     {
-        removeTreasure(hundID, atoi(argv[3]));
+        removeTreasure(huntID, atoi(argv[3]));
     }
     else if(strcmp(operation, "--remove_hunt")==0)
     {
-        removeHunt(hundID);
+        removeHunt(huntID);
     }
     else 
     {
         perror("Invalid command\n");
         exit(-1);
     }
-    return 0;
+    return 0;
 }
