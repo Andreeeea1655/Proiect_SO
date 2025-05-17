@@ -293,7 +293,7 @@ int main(int argc, char* argv[])
     {
         listHunts();
     }
-    else if(strcmp(operation, "--view_treasures")==0 && argc==4)
+    else if(strcmp(operation, "--view_treasure")==0 && argc==4)
     {
         viewTreasure(huntID, atoi(argv[3]));
     }
