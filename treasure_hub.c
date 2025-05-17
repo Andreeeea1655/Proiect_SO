@@ -84,16 +84,15 @@ void view_treasure_handler(const char* huntID, const char* treasureID)
         waitpid(pid_monitor, &status, 0);
     }
 }
-void calculate_score_handler(const char* huntID)
+void calculate_score_handler()
 {
-    int pipe[2];
-    if(pipe<0)
+    int pipe_score[2];
+    if(pipe(pipe_score)<0)
     {
         perror("Pipe failed\n");
         exit(-1);
     }
     pid_t pid=fork();
-    //pid_monitor=fork();
     if(pid<0)
     {
         perror("Fork failed\n");
@@ -102,10 +101,10 @@ void calculate_score_handler(const char* huntID)
     if(pid==0)
     {
         //child
-        close(pipe[0]);
-        dup2(pipe[1], STDOUT_FILENO);
-        close(pipe[1]);
-        execl("./calculate_score", "./calculate_score", huntID, NULL);
+        close(pipe_score[0]);
+        dup2(pipe_score[1], STDOUT_FILENO);
+        close(pipe_score[1]);
+        execl("./calculate_score", "./calculate_score", NULL);
         //execl replaces procesul curent cu unul nou
         perror("exec failed\n");
         exit(-1);
@@ -113,7 +112,7 @@ void calculate_score_handler(const char* huntID)
     else
     {
         //parent
-        close(pipe[1]);
+        close(pipe_score[1]);
         char buffer[256];
         int bt;
         while((bt=read(pipe[0], buffer, sizeof(buffer)-1))>0)
@@ -121,7 +120,7 @@ void calculate_score_handler(const char* huntID)
             buffer[bt]='\0';
             write(1, buffer, bt);
         }
-        close(pipe[0]);
+        close(pipe_score[0]);
         int status;
         waitpid(pid_monitor, &status, 0);
     }
@@ -181,9 +180,9 @@ void SIGUSR1_handler()
                 exit(-1);
             }
         }
-        else if(line[0] && line[1] && strcmp(line[0], "calculate_score")==0)
+        else if(line[0] && strcmp(line[0], "calculate_score")==0)
         {
-           calculate_score_handler(line[1]);
+           calculate_score_handler();
         }
         else
         {
@@ -382,10 +381,9 @@ int main()
             char* treasureID=strtok(NULL," ");
             command_monitor("view_treasure", huntID, treasureID);
         }
-        else if(strncmp(command, "calculate score",15)==0)
+        else if(strcmp(command, "calculate score")==0)
         {
-            char* huntID=command+16;
-            command_monitor("calculate_score", huntID, NULL);
+            command_monitor("calculate_score", NULL, NULL);
         }
         else
         {
