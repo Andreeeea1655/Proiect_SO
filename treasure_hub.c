@@ -21,7 +21,7 @@ void list_hunts_handler()
     }
     if(pid_monitor==0)
     {
-        //child 
+        //child
         execl("./treasure_manager", "./treasure_manager", "--list_hunts", NULL);
         //execl replaces procesul curent cu unul nou
         perror("exec failed\n");
@@ -31,7 +31,7 @@ void list_hunts_handler()
     {
         //parent
         int status;
-        waitpid(pid_monitor,&status,0);
+        waitpid(pid_monitor, &status, 0);
     }
 }
 
@@ -45,8 +45,9 @@ void list_treasures_handler(const char* huntID)
     }
     if(pid_monitor==0)
     {
-        //child 
+        //child
         execl("./treasure_manager", "./treasure_manager", "--list_treasures", huntID, NULL);
+        //execl replaces procesul curent cu unul nou
         perror("exec failed\n");
         exit(-1);
     }
@@ -54,7 +55,7 @@ void list_treasures_handler(const char* huntID)
     {
         //parent
         int status;
-        waitpid(pid_monitor,&status,0);
+        waitpid(pid_monitor, &status, 0);
     }
 }
 
@@ -70,8 +71,9 @@ void view_treasure_handler(const char* huntID, const char* treasureID)
     }
     if(pid_monitor==0)
     {
-        //child 
-        execl("./treasure_manager", "./treasure_manager", "--view_treasure", huntID, tID, NULL);
+        //child
+        execl("./treasure_manager", "./treasure_manager", "--view_treasure",huntID, tID, NULL);
+        //execl replaces procesul curent cu unul nou
         perror("exec failed\n");
         exit(-1);
     }
@@ -79,19 +81,61 @@ void view_treasure_handler(const char* huntID, const char* treasureID)
     {
         //parent
         int status;
-        waitpid(pid_monitor,&status,0);
+        waitpid(pid_monitor, &status, 0);
+    }
+}
+void calculate_score_handler(const char* huntID)
+{
+    int pipe[2];
+    if(pipe<0)
+    {
+        perror("Pipe failed\n");
+        exit(-1);
+    }
+    pid_t pid=fork();
+    //pid_monitor=fork();
+    if(pid<0)
+    {
+        perror("Fork failed\n");
+        exit(-1);
+    }
+    if(pid==0)
+    {
+        //child
+        close(pipe[0]);
+        dup2(pipe[1], STDOUT_FILENO);
+        close(pipe[1]);
+        execl("./calculate_score", "./calculate_score", huntID, NULL);
+        //execl replaces procesul curent cu unul nou
+        perror("exec failed\n");
+        exit(-1);
+    }
+    else
+    {
+        //parent
+        close(pipe[1]);
+        char buffer[256];
+        int bt;
+        while((bt=read(pipe[0], buffer, sizeof(buffer)-1))>0)
+        {
+            buffer[bt]='\0';
+            write(1, buffer, bt);
+        }
+        close(pipe[0]);
+        int status;
+        waitpid(pid_monitor, &status, 0);
     }
 }
 void SIGTERM_handler()
 {
 
-    write(STDOUT_FILENO, "SIGTERM signal received\n", strlen("SIGTERM signal received\n"));
+    write(1, "SIGTERM signal received\n", strlen("SIGTERM signal received\n"));
     exit(0);
 }
 
 void SIGUSR1_handler()
 {
-    write(STDOUT_FILENO, "SIGUSR1 signal received\n", strlen("SIGUSR1 signal received\n"));
+    write(1, "SIGUSR1 signal received\n", strlen("SIGUSR1 signal received\n"));
     int f=open("cmd.txt", O_RDONLY);
     if(f<0)
     {
@@ -100,7 +144,8 @@ void SIGUSR1_handler()
     }
     char buffer[256];
     int i=0;
-    int bt=read(f, buffer, sizeof(buffer));
+    int bt=read(f, buffer, sizeof(buffer)-1);
+    buffer[bt]='\0';
     close(f);
     char* line[3]={NULL, NULL, NULL};
     char* p=strtok(buffer,"\n");
@@ -109,23 +154,55 @@ void SIGUSR1_handler()
         line[i++]=p;
         p=strtok(NULL,"\n");
     }
-    if(line[0] && strcmp(line[0], "list_hunts")==0)
+
+    pid_t child=fork();
+    if(child<0)
     {
-        list_hunts_handler();
+        perror("Fork failed\n");
+        exit(-1);
     }
-    else if(line[0] && line[1] && strcmp(line[0], "list_treasures")==0)
+    if(child==0)
     {
-       list_treasures_handler(line[1]);
+        if(line[0] && strcmp(line[0], "list_hunts")==0)
+        {
+            list_hunts_handler();
+        }
+        else if(line[0] && line[1] && strcmp(line[0], "list_treasures")==0)
+        {
+            list_treasures_handler(line[1]);
+        }
+        else if(strcmp(line[0], "view_treasure")==0)
+        {
+            if(line[0] && line[1] && line[2])
+                view_treasure_handler(line[1], line[2]);
+            else
+            {
+                write(STDOUT_FILENO, "Missing ID\n", strlen("Missing ID\n"));
+                exit(-1);
+            }
+        }
+        else if(line[0] && line[1] && strcmp(line[0], "calculate_score")==0)
+        {
+           calculate_score_handler(line[1]);
+        }
+        else
+        {
+            write(pipe_monitor[1], "Invalid command\n", strlen("Invalid command\n"));
+            exit(-1);
+        }
+        //perror("exec failed\n");
+        exit(-1);
     }
-    else if(line[0] && line[1] && line[2] && strcmp(line[0], "view_treasure")==0)
+    else
     {
-        view_treasure_handler(line[1], line[2]);
+        int status;
+        waitpid(child, &status, 0);
     }
 }
 
 void SIGUSR2_handler()
 {
-    write(pipe_monitor[1], "SIGUSR2 signal received\n", strlen("SIGUSR2 signal received\n"));
+    write(1, "SIGUSR2 signal received\n", strlen("SIGUSR2 signal received\n"));
 }
 
 void run_monitor()
@@ -157,6 +234,7 @@ void command_monitor(const char* cmd, const char* argv1, const char* argv2)
     char ln[100];
     snprintf(ln, sizeof(ln), "%s\n", cmd);
     write(f,ln,strlen(ln));
+    //fsync(f);
     if(argv1)
     {
         snprintf(ln, sizeof(ln), "%s\n", argv1);
@@ -193,9 +271,12 @@ void start_monitor()
     {
         //child
         close(pipe_monitor[0]);
-        close(pipe_monitor[1]);
+        //close(pipe_monitor[1]);
         run_monitor();
-        pause();
+        while(1)
+        {
+            pause();
+        }
         exit(0);
     }
     else
@@ -220,6 +301,15 @@ void stop_monitor()
         perror("Kill failed\n");
         exit(-1);
     }
+    //aici scri in pipe
+    char buffer[256];
+    int bt;
+    while(bt=read(pipe_monitor[0], buffer, sizeof(buffer)-1))
+    {
+        buffer[bt]='\0';
+        write(1, buffer, bt);
+    }
+    close(pipe_monitor[0]);
     int status;
     pid_t wait_pid=waitpid(pid_monitor, &status, 0);
 
@@ -292,7 +382,11 @@ int main()
             char* treasureID=strtok(NULL," ");
             command_monitor("view_treasure", huntID, treasureID);
         }
-        
+        else if(strncmp(command, "calculate score",15)==0)
+        {
+            char* huntID=command+16;
+            command_monitor("calculate_score", huntID, NULL);
+        }
         else
         {
             write(1,"Invalid command\n", strlen("Invalid command\n"));
