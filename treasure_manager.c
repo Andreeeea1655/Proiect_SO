@@ -64,7 +64,7 @@ void addTreasure(const char* huntID)
         exit(-1);
     }
     Treasure t;
-    printf("Enter treasure ID: "); scanf("%d", &t.ID);
+    write(1, "Enter treasure ID: ", strlen("Enter treasure ID: ")); scanf("%d", &t.ID);
     int f1=open(treasurePath(huntID), O_RDONLY);
     if(f1>=0)
     {
@@ -73,19 +73,23 @@ void addTreasure(const char* huntID)
         {
             if(existsID.ID==t.ID)
             {
-                printf("Treasure with ID %d already exists.\n", t.ID);
+                char buffer[20];
+                int ID=snprintf(buffer, sizeof(buffer), "%d", t.ID);
+                write(1,"Already existent treasure with ID: ", strlen("Already existent treasure with ID: "));
+                write(1,buffer,ID);
+                write(1,"\n", 1);
                 close(f1);
                 exit(-1);
             }
         }
         close(f1);
     }
-    printf("Enter username: "); scanf("%s", t.username);
-    printf("Enter latitude: "); scanf("%f", &t.col);
-    printf("Enter longitude: "); scanf("%f", &t.linie);
-    printf("Enter clue: "); getchar(); fgets(t.clue, 100, stdin);
+    write(1,"Enter username: ", strlen("Enter username: ")); scanf("%s", t.username);
+    write(1,"Enter latitude: ", strlen("Enter latitude: ")); scanf("%f", &t.col);
+    write(1,"Enter longitude: ", strlen("Enter longitude: ")); scanf("%f", &t.linie);
+    write(1,"Enter clue: ", strlen("Enter clue: ")); getchar(); fgets(t.clue, 100, stdin);
     t.clue[strcspn(t.clue, "\n")] = 0;
-    printf("Enter value: "); scanf("%d", &t.value);
+    write(1,"Enter value: ", strlen("Enter value: ")); scanf("%d", &t.value);
 
     write(f,&t,sizeof(Treasure));
     close(f);
@@ -143,20 +147,46 @@ void listTreasures(const char* huntID)
     }
     struct stat st;
     stat(treasurePath(huntID), &st);
-    printf("Hunt: %s\n", huntID);
-    printf("File size: %ld\n", st.st_size);
-    printf("Last modified: %s\n", ctime(&st.st_mtime));
-    printf("Treasures:\n");
+    char bufferSize[100];
+    int size=snprintf(bufferSize, sizeof(bufferSize), "%ld", st.st_size);
+    write(1,"Hunt: ", strlen("Hunt: "));
+    write(1,huntID, strlen(huntID));
+    write(1,"\n", 1);
+    write(1,"File size: ", strlen("File size: "));
+    write(1,bufferSize, size);
+    write(1,"\n", 1);
+    write(1,"Last modified: ", strlen("Last modified: "));
+    write(1,ctime(&st.st_mtime), strlen(ctime(&st.st_mtime)));
+    write(1,"Treasures:\n", strlen("Treasures:\n"));
 
     Treasure t;
     while(read(f,&t,sizeof(Treasure))>0)
     {
-        printf("ID: %d\n", t.ID);
-        printf("Username: %s\n", t.username);
-        printf("GPS: %.2f, %.2f\n", t.linie, t.col);
-        printf("Clue: %s\n", t.clue);
-        printf("Value: %d\n", t.value);
-        printf("\n");
+        char bufferID[20];
+        char bufferGPS[20];
+        char bufferValue[20];
+        int ID=snprintf(bufferID, sizeof(bufferID), "%d", t.ID);
+        int linie=snprintf(bufferGPS, sizeof(bufferGPS), "%.2f", t.linie);
+        int coloana=snprintf(bufferGPS, sizeof(bufferGPS), "%.2f", t.col);
+        int value=snprintf(bufferValue, sizeof(bufferValue), "%d", t.value);
+        write(1,"ID: ", strlen("ID: "));
+        write(1,bufferID, ID);
+        write(1,"\n", 1);
+        write(1,"Username: ", strlen("Username: "));
+        write(1,t.username, strlen(t.username));
+        write(1,"\n", 1);
+        write(1,"GPS: ", strlen("GPS: "));
+        write(1,bufferGPS, linie);
+        write(1,", ", 2);
+        write(1,bufferGPS, coloana);
+        write(1,"\n", 1);
+        write(1,"Clue: ", strlen("Clue: "));
+        write(1,t.clue, strlen(t.clue));
+        write(1,"\n", 1);
+        write(1,"Value: ", strlen("Value: "));
+        write(1,bufferValue, value);
+        write(1,"\n", 1);
+        write(1,"\n", 1);
     }
     close(f);
     logAction(huntID,"Listed treasures\n");
@@ -178,17 +208,42 @@ void viewTreasure(const char *huntID, int ID)
     {
         if(t.ID==ID)
         {
-            printf("ID: %d\n", t.ID);
-            printf("Username: %s\n", t.username);
-            printf("GPS: %.2f, %.2f\n", t.linie, t.col);
-            printf("Clue: %s\n", t.clue);
-            printf("Value: %d\n", t.value);
-            printf("\n");
+            char bufferID[20];
+            char bufferGPS[20];
+            char bufferValue[20];
+            int ID=snprintf(bufferID, sizeof(bufferID), "%d", t.ID);
+            int linie=snprintf(bufferGPS, sizeof(bufferGPS), "%.2f", t.linie);
+            int coloana=snprintf(bufferGPS, sizeof(bufferGPS), "%.2f", t.col);
+            int value=snprintf(bufferValue, sizeof(bufferValue), "%d", t.value);
+            write(1,"ID: ", strlen("ID: "));
+            write(1,bufferID, ID);
+            write(1,"\n", 1);
+            write(1,"Username: ", strlen("Username: "));
+            write(1,t.username, strlen(t.username));
+            write(1,"\n", 1);
+            write(1,"GPS: ", strlen("GPS: "));
+            write(1,bufferGPS, linie);
+            write(1,", ", 2);
+            write(1,bufferGPS, coloana);
+            write(1,"\n", 1);
+            write(1,"Clue: ", strlen("Clue: "));
+            write(1,t.clue, strlen(t.clue));
+            write(1,"\n", 1);
+            write(1,"Value: ", strlen("Value: "));
+            write(1,bufferValue, value);
+            write(1,"\n", 1);
+            write(1,"\n", 1);
             ok=1; break;
         }
     }
+    char bufferID[20];
+    int bID=snprintf(bufferID, sizeof(bufferID), "%d", ID);
     if(!ok)
-        printf("Treasure with ID %d not found\n", ID);
+    {
+        write(1, "Didn't find reasure with ID: ", strlen("Didn't find reasure with ID: "));
+        write(1,bufferID, bID);
+        write(1,"\n", 1);
+    }
     else
         logAction(huntID, "Viewed treasure\n");
     close(f);
@@ -219,15 +274,23 @@ void removeTreasure(const char* huntID, int ID)
     }
     close(f);
     close(auxf);
+    char bufferID[20];
+    int bID=snprintf(bufferID, sizeof(bufferID), "%d", ID);
     if(ok)
     {
        remove(path);
        rename(auxpath,path);
        logAction(huntID, "Removed treasure\n");
+       write(1,"Removed treasure with ID: ", strlen("Removed treasure with ID: "));
+       write(1,bufferID, bID);
+       write(1,"\n", 1);
+    
     }
     else
     {
-        printf("Treasure ID %d not found\n", ID);
+        write(1, "Didn't find reasure with ID: ", strlen("Didn't find reasure with ID: "));
+        write(1,bufferID, bID);
+        write(1,"\n", 1);
         remove(auxpath);
     }
 }
@@ -259,7 +322,9 @@ void removeHunt(const char* huntID)
     }
     else
     {
-        printf("Hunt %s removed succesfully\n", huntID);
+        write(1,"Removed succesfully hunt ",strlen("Removed succesfully hunt "));
+        write(1,huntID, strlen(huntID));
+        write(1,"\n", 1);
     }
     char treasure[256];
     char logFile[256];
