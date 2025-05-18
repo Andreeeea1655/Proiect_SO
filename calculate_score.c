@@ -6,7 +6,6 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <sys/stat.h>
-//#define _POSIX_C_SOURCE 200809L
 
 typedef struct{
     int ID;
@@ -45,8 +44,6 @@ int main()
             {
                 continue; // Not a directory
             }
-            //char huntID[50];
-            //strncpy(huntID, entry->d_name, sizeof(huntID));
             char path[256];
             snprintf(path, sizeof(path), "hunt/%s/treasure_%s.bin", entry->d_name, entry->d_name);
             int f=open(path, O_RDONLY);
